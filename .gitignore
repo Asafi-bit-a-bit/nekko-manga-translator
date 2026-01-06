@@ -1,0 +1,66 @@
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+*.whl
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+env/
+.python-version
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.cache/
+
+# Node / Vite
+node_modules/
+dist/
+build/
+.vite/
+.vite-inspect/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Env files
+.env
+.env.*
+
+# Project runtime data
+tmp/
+logs/
+*.log
+*.pid
+
+# External deps and weights (downloaded by script)
+third_party/
+wheels/
+
+# Model weights (keep out of git history)
+third_party/**/*.safetensors
+third_party/**/*.onnx
+third_party/**/*.pt
+third_party/**/*.pth
+third_party/**/*.ckpt
+third_party/**/*.bin
+
+# Roadmap
+roadmap_plan.md
