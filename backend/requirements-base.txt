@@ -18,3 +18,4 @@ unidic-lite>=1.0.8
 sentencepiece>=0.1.99
 einops
 loguru
+packaging>=24.0

@@ -15,10 +15,17 @@ REQ_FULL="$BACKEND_DIR/requirements.txt"
 DEPS_BASE_MARKER="$BACKEND_DIR/.venv/.deps_base_installed"
 DEPS_FULL_MARKER="$BACKEND_DIR/.venv/.deps_full_installed"
 CUDA_WHEELS_MARKER="$BACKEND_DIR/.venv/.cuda_wheels_installed"
+FIRST_FIX_MARKER="$BACKEND_DIR/.venv/.first_fix_done"
 
 PYTORCH_CUDA_INDEX_URL="https://download.pytorch.org/whl/cu124"
 
 export PADDLE_OCR_DEVICE=cuda
+
+# ======================================================
+# Launch configuration (editable via configure_launch.py)
+# ======================================================
+WEBUI_AUTO_MODE="${WEBUI_AUTO_MODE:-auto_fix}"
+WEBUI_SHOW_PROGRESS="${WEBUI_SHOW_PROGRESS:-1}"
 
 log() {
   echo "[webui] $*"
@@ -26,17 +33,35 @@ log() {
 
 run_preflight() {
   local preflight_py="$BACKEND_DIR/tests/preflight.py"
+  PREFLIGHT_RC=0
   if [ ! -f "$preflight_py" ]; then
     log "Preflight not found, skipping"
     return 0
   fi
 
-  if [ -x "$BACKEND_DIR/.venv/bin/python" ]; then
-    "$BACKEND_DIR/.venv/bin/python" "$preflight_py" || true
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 "$preflight_py" || true
+  local effective_mode="$WEBUI_AUTO_MODE"
+  if [ "$WEBUI_AUTO_MODE" = "auto_fix" ] && [ -f "$FIRST_FIX_MARKER" ]; then
+    effective_mode="verify_first"
+  fi
+
+  if [ "$effective_mode" = "auto_fix" ]; then
+    log "Running preflight with auto-fix"
+    WEBUI_SHOW_PROGRESS="$WEBUI_SHOW_PROGRESS" "$BACKEND_DIR/.venv/bin/python" "$preflight_py" --fix || PREFLIGHT_RC=$?
+    if [ "$PREFLIGHT_RC" -eq 0 ]; then
+      touch "$FIRST_FIX_MARKER"
+      WEBUI_AUTO_MODE="verify_first"
+    fi
   else
-    python "$preflight_py" || true
+    log "Running preflight (verify then fix if needed)"
+    WEBUI_SHOW_PROGRESS="$WEBUI_SHOW_PROGRESS" "$BACKEND_DIR/.venv/bin/python" "$preflight_py" || PREFLIGHT_RC=$?
+    if [ "$PREFLIGHT_RC" -ne 0 ]; then
+      log "Verification failed, running auto-fix"
+      PREFLIGHT_RC=0
+      WEBUI_SHOW_PROGRESS="$WEBUI_SHOW_PROGRESS" "$BACKEND_DIR/.venv/bin/python" "$preflight_py" --fix || PREFLIGHT_RC=$?
+      if [ "$PREFLIGHT_RC" -eq 0 ]; then
+        touch "$FIRST_FIX_MARKER"
+      fi
+    fi
   fi
 }
 
@@ -419,6 +444,11 @@ PY
 fi
 
 run_preflight
+
+if [ "${PREFLIGHT_RC:-0}" -ne 0 ]; then
+  log "Preflight failed after auto-fix. Fix issues above and re-run."
+  exit 1
+fi
 
 rm -rf "$TMP_DIR" && mkdir -p "$TMP_DIR"
 
